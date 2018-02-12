@@ -26,7 +26,6 @@
   },
   "homepage": "https://github.com/trufflesuite/truffle-contract#readme",
   "dependencies": {
-    "ethjs-abi": "0.1.8",
     "truffle-blockchain-utils": "^0.0.3",
     "truffle-contract-schema": "^1.0.0",
     "truffle-error": "0.0.2",
