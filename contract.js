@@ -168,6 +168,12 @@ var contract = (function(module) {
 
               var start = new Date().getTime();
 
+              var sync_interval = C.synchronization_interval || 1000;
+              var wait_for_blocks_created = C.synchronization_blocks;
+              
+              // console.log(C.web3.eth);
+              var tx_at_blockNr = C.web3.eth.blockNumber;
+              
               var make_attempt = function() {
                 C.web3.eth.getTransactionReceipt(tx, function(err, receipt) {
                   if (err && !err.toString().includes('unknown transaction')){
@@ -189,11 +195,15 @@ var contract = (function(module) {
                     }
                   }
 
-                  if (timeout > 0 && new Date().getTime() - start > timeout) {
+                  if (!wait_for_blocks_created && timeout > 0 && new Date().getTime() - start > timeout) {
                     return reject(new Error("Transaction " + tx + " wasn't processed in " + (timeout / 1000) + " seconds!"));
                   }
 
-                  setTimeout(make_attempt, 1000);
+                  if (!!wait_for_blocks_created && (tx_at_blockNr + wait_for_blocks_created <= C.web3.eth.blockNumber)) {
+                    return reject(new Error(`Transaction " + tx + " wasn't processed in ${wait_for_blocks_created} blocks!`));
+                  }
+
+                  setTimeout(make_attempt, sync_interval);
                 });
               };
 
