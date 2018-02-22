@@ -154,60 +154,8 @@ var contract = (function(module) {
         return C.detectNetwork().then(function() {
           return new Promise(function(accept, reject) {
             var callback = function(error, tx) {
-              if (error != null) {
-                reject(error);
-                return;
-              }
-
-              var timeout;
-              if (C.synchronization_timeout === 0 || C.synchronization_timeout !== undefined) {
-                timeout = C.synchronization_timeout;
-              } else {
-                timeout = 240000;
-              }
-
-              var start = new Date().getTime();
-
-              var sync_interval = C.synchronization_interval || 1000;
-              var wait_for_blocks_created = C.synchronization_blocks;
-              
-              // console.log(C.web3.eth);
-              var tx_at_blockNr = C.web3.eth.blockNumber;
-              
-              var make_attempt = function() {
-                C.web3.eth.getTransactionReceipt(tx, function(err, receipt) {
-                  if (err && !err.toString().includes('unknown transaction')){
-                    return reject(err);
-                  }
-
-                  // Reject on transaction failures, accept otherwise
-                  // Handles "0x00" or hex 0
-                  if (receipt != null) {
-                    if (parseInt(receipt.status, 16) == 0){
-                      var statusError = new StatusError(tx_params, tx, receipt);
-                      return reject(statusError);
-                    } else {
-                      return accept({
-                        tx: tx,
-                        receipt: receipt,
-                        logs: Utils.decodeLogs(C, instance, receipt.logs)
-                      });
-                    }
-                  }
-
-                  if (!wait_for_blocks_created && timeout > 0 && new Date().getTime() - start > timeout) {
-                    return reject(new Error("Transaction " + tx + " wasn't processed in " + (timeout / 1000) + " seconds!"));
-                  }
-
-                  if (!!wait_for_blocks_created && (tx_at_blockNr + wait_for_blocks_created <= C.web3.eth.blockNumber)) {
-                    return reject(new Error(`Transaction " + tx + " wasn't processed in ${wait_for_blocks_created} blocks!`));
-                  }
-
-                  setTimeout(make_attempt, sync_interval);
-                });
-              };
-
-              make_attempt();
+              if (error != null) return reject(error);
+              accept(tx);
             };
 
             args.push(tx_params, callback);
