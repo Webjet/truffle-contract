@@ -154,8 +154,55 @@ var contract = (function(module) {
         return C.detectNetwork().then(function() {
           return new Promise(function(accept, reject) {
             var callback = function(error, tx) {
-              if (error != null) return reject(error);
-              accept(tx);
+              if (error != null) {
+                reject(error);
+                return;
+              }
+
+              if (C.synchronization === "none") {
+                accept({ tx });
+                return;
+              }
+
+              var timeout;
+              if (C.synchronization_timeout === 0 || C.synchronization_timeout !== undefined) {
+                timeout = C.synchronization_timeout;
+              } else {
+                timeout = 240000;
+              }
+
+              var start = new Date().getTime();
+
+              var make_attempt = function() {
+                C.web3.eth.getTransactionReceipt(tx, function(err, receipt) {
+                  if (err && !err.toString().includes('unknown transaction')){
+                    return reject(err);
+                  }
+
+                  // Reject on transaction failures, accept otherwise
+                  // Handles "0x00" or hex 0
+                  if (receipt != null) {
+                    if (parseInt(receipt.status, 16) == 0){
+                      var statusError = new StatusError(tx_params, tx, receipt);
+                      return reject(statusError);
+                    } else {
+                      return accept({
+                        tx: tx,
+                        receipt: receipt,
+                        logs: Utils.decodeLogs(C, instance, receipt.logs)
+                      });
+                    }
+                  }
+
+                  if (timeout > 0 && new Date().getTime() - start > timeout) {
+                    return reject(new Error("Transaction " + tx + " wasn't processed in " + (timeout / 1000) + " seconds!"));
+                  }
+
+                  setTimeout(make_attempt, 1000);
+                });
+              };
+
+              make_attempt();
             };
 
             args.push(tx_params, callback);
